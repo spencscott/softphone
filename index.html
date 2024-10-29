@@ -54,6 +54,8 @@
         return;
       }
 
+      console.log('Attempting to register SIP client...');
+
       try {
         const socket = new JsSIP.WebSocketInterface(sipServer);
         const configuration = {
@@ -63,14 +65,23 @@
         };
 
         userAgent = new JsSIP.UA(configuration);
-        userAgent.start();
+
+        userAgent.on('connected', () => {
+          console.log('WebSocket connected.');
+        });
+
+        userAgent.on('disconnected', () => {
+          console.error('WebSocket disconnected.');
+        });
 
         userAgent.on('registered', () => {
+          console.log('SIP client registered successfully!');
           alert('SIP client registered successfully!');
           document.getElementById('call-controls').style.display = 'block';
         });
 
         userAgent.on('registrationFailed', (e) => {
+          console.error('Registration failed: ', e.cause);
           alert('Registration failed: ' + e.cause);
         });
 
@@ -78,13 +89,21 @@
           currentSession = data.session;
 
           if (currentSession.direction === 'incoming') {
+            console.log('Incoming call detected. Answering the call.');
             currentSession.answer({ mediaConstraints: { audio: true, video: false } });
           }
 
           currentSession.on('ended', () => {
+            console.log('Call ended.');
             currentSession = null;
           });
         });
+
+        userAgent.on('registrationFailed', (e) => {
+          console.error('Registration failed: ', e);
+        });
+
+        userAgent.start();
       } catch (error) {
         console.error('Error during SIP client registration:', error);
         alert('Failed to initialize SIP client. Please check the WebSocket URL and try again.');
@@ -99,17 +118,21 @@
         return;
       }
 
+      console.log('Attempting to make a call to:', callNumber);
+
       currentSession = userAgent.call('sip:' + callNumber + '@' + userAgent.configuration.uri.split('@')[1], {
         mediaConstraints: { audio: true, video: false }
       });
 
       currentSession.on('ended', () => {
+        console.log('Call ended.');
         currentSession = null;
       });
     }
 
     function hangupCall() {
       if (currentSession) {
+        console.log('Hanging up the call.');
         currentSession.terminate();
       }
     }
