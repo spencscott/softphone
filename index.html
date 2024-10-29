@@ -62,10 +62,20 @@
         const configuration = {
           sockets: [socket],
           uri: sipUri,
-          password: sipPassword
+          password: sipPassword,
+          registrar_server: 'sip:fastmetrics.com',
+          contact_uri: `sip:9999a@fastmetrics.com`,
+          outbound_proxy_set: 'sip:core1sfo.vofm.us:5060',
+          via_host: 'fastmetrics.com',
+          session_timers: false,
+          user_agent: 'CustomWebRTCPhone/1.0.0'
         };
 
         userAgent = new JsSIP.UA(configuration);
+
+        userAgent.on('connecting', () => {
+          console.log('Connecting to WebSocket...');
+        });
 
         userAgent.on('connected', () => {
           console.log('WebSocket connected.');
@@ -86,6 +96,10 @@
           alert('Registration failed: ' + e.cause);
         });
 
+        userAgent.on('unregistered', () => {
+          console.log('SIP client unregistered.');
+        });
+
         userAgent.on('newRTCSession', (data) => {
           currentSession = data.session;
 
@@ -98,10 +112,6 @@
             console.log('Call ended.');
             currentSession = null;
           });
-        });
-
-        userAgent.on('registrationFailed', (e) => {
-          console.error('Registration failed: ', e);
         });
 
         userAgent.start();
@@ -140,4 +150,3 @@
   </script>
 </body>
 </html>
-
