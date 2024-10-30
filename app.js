@@ -1,62 +1,102 @@
-// Replace these with your SIP credentials
-const sipConfig = {
-  uri: 'sip:9999a@fastmetrics.com',
-  authorizationUser: '9999a',
-  password: 'CAUYp02y',
-  transportOptions: {
-    wsServers: 'wss://uc1sfo.vofm.us:8001',
-    traceSip: true,
-  },
-  registrarServer: 'sip:fastmetrics.com',
-};
+// DOM Elements
+const statusDisplay = document.getElementById("status");
+const connectButton = document.getElementById("connect");
+const callButton = document.getElementById("call");
+const hangupButton = document.getElementById("hangup");
 
-// Create the SIP User Agent
-const userAgent = new SIP.UserAgent({
-  uri: sipConfig.uri,
-  transportOptions: sipConfig.transportOptions,
-  authorizationUsername: sipConfig.authorizationUser,
-  authorizationPassword: sipConfig.password,
-  registrarServer: sipConfig.registrarServer,
-});
-
-// Store the session object globally to manage calls
+let userAgent;
 let session;
 
-// Start Call
-function startCall() {
-  const options = {
-    sessionDescriptionHandlerOptions: {
-      constraints: {
-        audio: true,
-        video: false,
-      },
-    },
-  };
+// Update status message
+function updateStatus(message) {
+  statusDisplay.innerText = `Status: ${message}`;
+}
 
-  session = userAgent.invite('sip:destination_number@fastmetrics.com', options);
+// Configure and connect User Agent
+function connect() {
+  userAgent = new SIP.UA({
+    uri: '9999a@fastmetrics.com',
+    transportOptions: {
+      wsServers: ['wss://uc1sfo.vofm.us:8001']
+    },
+    authorizationUser: '9999a',
+    password: 'CAUYp02y',
+    sessionDescriptionHandlerFactoryOptions: {
+      constraints: { audio: true, video: false }
+    }
+  });
+
+  userAgent.on('registered', () => updateStatus("Connected"));
+  userAgent.on('unregistered', () => updateStatus("Disconnected"));
+  userAgent.on('registrationFailed', () => updateStatus("Registration Failed"));
+  userAgent.on('invite', receiveCall);
+}
+
+// Make a call
+function makeCall() {
+  if (!userAgent) {
+    updateStatus("Please connect first.");
+    return;
+  }
+
+  session = userAgent.invite('sip:targetNumber@fastmetrics.com', {
+    sessionDescriptionHandlerOptions: {
+      constraints: { audio: true, video: false }
+    }
+  });
 
   session.on('trackAdded', () => {
     const remoteStream = new MediaStream();
-    session.sessionDescriptionHandler.peerConnection
-      .getReceivers()
-      .forEach(receiver => {
-        remoteStream.addTrack(receiver.track);
-      });
-    document.getElementById('remoteAudio').srcObject = remoteStream;
+    session.sessionDescriptionHandler.peerConnection.getReceivers().forEach(receiver => {
+      remoteStream.addTrack(receiver.track);
+    });
+    const audioElement = document.createElement('audio');
+    document.body.appendChild(audioElement);
+    audioElement.srcObject = remoteStream;
+    audioElement.play();
   });
+
+  session.on('terminated', () => {
+    updateStatus("Call ended");
+  });
+
+  updateStatus("Calling...");
 }
 
-// End Call
-function endCall() {
+// Hang up a call
+function hangupCall() {
   if (session) {
-    session.bye();
-    session = null;
+    session.terminate();
+    updateStatus("Call ended");
+  } else {
+    updateStatus("No active call.");
   }
 }
 
-// Connect the User Agent
-userAgent.start().then(() => {
-  console.log("SIP.js User Agent Registered");
-}).catch(error => {
-  console.error("Registration Error: ", error);
-});
+// Receive an incoming call
+function receiveCall(incomingSession) {
+  session = incomingSession;
+  session.accept();
+
+  session.on('trackAdded', () => {
+    const remoteStream = new MediaStream();
+    session.sessionDescriptionHandler.peerConnection.getReceivers().forEach(receiver => {
+      remoteStream.addTrack(receiver.track);
+    });
+    const audioElement = document.createElement('audio');
+    document.body.appendChild(audioElement);
+    audioElement.srcObject = remoteStream;
+    audioElement.play();
+  });
+
+  session.on('terminated', () => {
+    updateStatus("Call ended");
+  });
+
+  updateStatus("Incoming call...");
+}
+
+// Event Listeners
+connectButton.addEventListener("click", connect);
+callButton.addEventListener("click", makeCall);
+hangupButton.addEventListener("click", hangupCall);
