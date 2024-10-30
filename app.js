@@ -13,87 +13,56 @@ function updateStatus(message) {
 }
 
 // Configure and connect User Agent
-function connect() {
-  userAgent = new SIP.UA({
-    uri: '9999a@fastmetrics.com',
-    transportOptions: {
-      wsServers: ['wss://uc1sfo.vofm.us:8001']
-    },
-    authorizationUser: '9999a',
-    password: 'CAUYp02y',
-    sessionDescriptionHandlerFactoryOptions: {
-      constraints: { audio: true, video: false }
-    }
-  });
+async function connect() {
+  try {
+    userAgent = new SIP.Web.SimpleUser("wss://uc1sfo.vofm.us:8001", {
+      aor: 'sip:9999a@fastmetrics.com',
+      userAgentOptions: {
+        authorizationUsername: '9999a',
+        authorizationPassword: 'CAUYp02y'
+      },
+      media: {
+        remote: {
+          audio: document.createElement("audio") // audio element for remote audio
+        },
+        constraints: { audio: true, video: false }
+      }
+    });
 
-  userAgent.on('registered', () => updateStatus("Connected"));
-  userAgent.on('unregistered', () => updateStatus("Disconnected"));
-  userAgent.on('registrationFailed', () => updateStatus("Registration Failed"));
-  userAgent.on('invite', receiveCall);
+    await userAgent.connect();
+    await userAgent.register();
+
+    updateStatus("Connected");
+  } catch (error) {
+    console.error("Connection error:", error);
+    updateStatus("Connection Failed");
+  }
 }
 
 // Make a call
-function makeCall() {
-  if (!userAgent) {
+async function makeCall() {
+  if (!userAgent || !userAgent.isConnected()) {
     updateStatus("Please connect first.");
     return;
   }
 
-  session = userAgent.invite('sip:targetNumber@fastmetrics.com', {
-    sessionDescriptionHandlerOptions: {
-      constraints: { audio: true, video: false }
-    }
-  });
-
-  session.on('trackAdded', () => {
-    const remoteStream = new MediaStream();
-    session.sessionDescriptionHandler.peerConnection.getReceivers().forEach(receiver => {
-      remoteStream.addTrack(receiver.track);
-    });
-    const audioElement = document.createElement('audio');
-    document.body.appendChild(audioElement);
-    audioElement.srcObject = remoteStream;
-    audioElement.play();
-  });
-
-  session.on('terminated', () => {
-    updateStatus("Call ended");
-  });
-
-  updateStatus("Calling...");
+  try {
+    session = await userAgent.call("sip:targetNumber@fastmetrics.com");
+    updateStatus("Calling...");
+  } catch (error) {
+    console.error("Call error:", error);
+    updateStatus("Call failed");
+  }
 }
 
 // Hang up a call
 function hangupCall() {
   if (session) {
-    session.terminate();
+    session.hangup();
     updateStatus("Call ended");
   } else {
     updateStatus("No active call.");
   }
-}
-
-// Receive an incoming call
-function receiveCall(incomingSession) {
-  session = incomingSession;
-  session.accept();
-
-  session.on('trackAdded', () => {
-    const remoteStream = new MediaStream();
-    session.sessionDescriptionHandler.peerConnection.getReceivers().forEach(receiver => {
-      remoteStream.addTrack(receiver.track);
-    });
-    const audioElement = document.createElement('audio');
-    document.body.appendChild(audioElement);
-    audioElement.srcObject = remoteStream;
-    audioElement.play();
-  });
-
-  session.on('terminated', () => {
-    updateStatus("Call ended");
-  });
-
-  updateStatus("Incoming call...");
 }
 
 // Event Listeners
