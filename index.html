@@ -3,150 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple WebRTC Softphone</title>
-  <script src="jssip-3.10.0.min.js"></script>
-  <script>
-    if (typeof JsSIP === 'undefined') {
-      console.error('JsSIP failed to load. Please check the script source.');
-      alert('JsSIP library is not loaded. Please check the script source.');
-    } else {
-      console.log('JsSIP successfully loaded.');
-      JsSIP.debug.enable('JsSIP:*'); // Enable detailed JsSIP debugging
-    }
-  </script>
+  <title>WebRTC Softphone</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.7.2/jssip.min.js"></script>
 </head>
 <body>
-  <h2>Simple WebRTC Softphone</h2>
+  <h1>WebRTC Softphone</h1>
+  <button id="callButton">Start Call</button>
+  <button id="hangupButton" disabled>Hang Up</button>
+  <p id="status">Status: Not connected</p>
 
-  <div>
-    <label for="sipUri">SIP URI (e.g., sip:username@domain): </label>
-    <input type="text" id="sipUri" placeholder="sip:9999a@fastmetrics.com" value="sip:9999a@fastmetrics.com">
-    <br><br>
-    <label for="sipPassword">Password: </label>
-    <input type="password" id="sipPassword" placeholder="Password" value="CAUYp02y">
-    <br><br>
-    <label for="sipServer">WebSocket Server (e.g., wss://your-sip-server.com:8089/ws): </label>
-    <input type="text" id="sipServer" placeholder="wss://uc1sfo.vofm.us:8001" value="wss://uc1sfo.vofm.us:8001">
-    <br><br>
-    <button onclick="registerSipClient()">Register</button>
-    <br><br>
-  </div>
-
-  <div id="call-controls" style="display:none;">
-    <label for="callNumber">Call Number: </label>
-    <input type="text" id="callNumber" placeholder="Number to call">
-    <br><br>
-    <button onclick="makeCall()">Call</button>
-    <button onclick="hangupCall()">Hang Up</button>
-    <br><br>
-  </div>
-
-  <script>
-    let userAgent;
-    let currentSession;
-
-    function registerSipClient() {
-      const sipUri = document.getElementById('sipUri').value;
-      const sipPassword = document.getElementById('sipPassword').value;
-      const sipServer = document.getElementById('sipServer').value;
-
-      if (!sipUri || !sipPassword || !sipServer) {
-        alert('Please enter all the required details.');
-        return;
-      }
-
-      console.log('Attempting to register SIP client...');
-
-      try {
-        const socket = new JsSIP.WebSocketInterface(sipServer);
-        const configuration = {
-          sockets: [socket],
-          uri: sipUri,
-          password: sipPassword,
-          registrar_server: 'sip:fastmetrics.com',
-          contact_uri: `sip:9999a@fastmetrics.com`,
-          outbound_proxy_set: 'sip:core1sfo.vofm.us:5060',
-          via_host: 'fastmetrics.com',
-          session_timers: false,
-          user_agent: 'CustomWebRTCPhone/1.0.0'
-        };
-
-        userAgent = new JsSIP.UA(configuration);
-
-        userAgent.on('connecting', () => {
-          console.log('Connecting to WebSocket...');
-        });
-
-        userAgent.on('connected', () => {
-          console.log('WebSocket connected.');
-        });
-
-        userAgent.on('disconnected', () => {
-          console.error('WebSocket disconnected.');
-        });
-
-        userAgent.on('registered', () => {
-          console.log('SIP client registered successfully!');
-          alert('SIP client registered successfully!');
-          document.getElementById('call-controls').style.display = 'block';
-        });
-
-        userAgent.on('registrationFailed', (e) => {
-          console.error('Registration failed: ', e.cause);
-          alert('Registration failed: ' + e.cause);
-        });
-
-        userAgent.on('unregistered', () => {
-          console.log('SIP client unregistered.');
-        });
-
-        userAgent.on('newRTCSession', (data) => {
-          currentSession = data.session;
-
-          if (currentSession.direction === 'incoming') {
-            console.log('Incoming call detected. Answering the call.');
-            currentSession.answer({ mediaConstraints: { audio: true, video: false } });
-          }
-
-          currentSession.on('ended', () => {
-            console.log('Call ended.');
-            currentSession = null;
-          });
-        });
-
-        userAgent.start();
-      } catch (error) {
-        console.error('Error during SIP client registration:', error);
-        alert('Failed to initialize SIP client. Please check the WebSocket URL and try again.');
-      }
-    }
-
-    function makeCall() {
-      const callNumber = document.getElementById('callNumber').value;
-
-      if (!callNumber) {
-        alert('Please enter the number to call.');
-        return;
-      }
-
-      console.log('Attempting to make a call to:', callNumber);
-
-      currentSession = userAgent.call('sip:' + callNumber + '@' + userAgent.configuration.uri.split('@')[1], {
-        mediaConstraints: { audio: true, video: false }
-      });
-
-      currentSession.on('ended', () => {
-        console.log('Call ended.');
-        currentSession = null;
-      });
-    }
-
-    function hangupCall() {
-      if (currentSession) {
-        console.log('Hanging up the call.');
-        currentSession.terminate();
-      }
-    }
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
+
