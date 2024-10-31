@@ -45,6 +45,17 @@
   </div>
 
   <script>
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(function(registration) {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(function(error) {
+          console.error('Service Worker registration failed:', error);
+        });
+    }
+
     let userAgent;
     let currentSession;
     let recognition;
@@ -157,7 +168,8 @@
         const configuration = {
           sockets: [socket],
           uri: sipUri,
-          password: sipPassword
+          password: sipPassword,
+          session_timers: false // Disable session timers to prevent automatic re-registration
         };
 
         userAgent = new JsSIP.UA(configuration);
@@ -230,18 +242,5 @@
       }
     }
   </script>
-
-  <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(function(registration) {
-        console.log('Service Worker registered with scope:', registration.scope);
-      })
-      .catch(function(error) {
-        console.error('Service Worker registration failed:', error);
-      });
-  }
-</script>
-
 </body>
 </html>
