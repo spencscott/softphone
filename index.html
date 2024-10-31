@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Simple WebRTC Softphone</title>
-  <link rel="manifest" href="manifest.json">
   <script src="jssip-3.10.0.min.js"></script>
 </head>
 <body>
@@ -45,17 +44,6 @@
   </div>
 
   <script>
-    // Service Worker Registration
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(function(registration) {
-          console.log('Service Worker registered with scope:', registration.scope);
-        })
-        .catch(function(error) {
-          console.error('Service Worker registration failed:', error);
-        });
-    }
-
     let userAgent;
     let currentSession;
     let recognition;
@@ -168,9 +156,7 @@
         const configuration = {
           sockets: [socket],
           uri: sipUri,
-          password: sipPassword,
-          register_expires: 3600, // Request a longer expiry time (e.g., 1 hour)
-          session_timers: false // Disable session timers to prevent automatic re-registration
+          password: sipPassword
         };
 
         userAgent = new JsSIP.UA(configuration);
@@ -179,11 +165,6 @@
         userAgent.on('registered', () => {
           alert('SIP client registered successfully!');
           document.getElementById('call-controls').style.display = 'block';
-        });
-
-        userAgent.on('registrationFailed', (data) => {
-          console.error('Registration failed:', data.cause);
-          alert('Registration failed: ' + data.cause);
         });
 
         userAgent.on('newRTCSession', (data) => {
