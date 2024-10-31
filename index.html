@@ -72,7 +72,12 @@
           mixedStream.addTrack(remoteStream.getAudioTracks()[0]);
         }
 
-        // Create MediaRecorder instance
+        // Play the combined stream so that it is "heard" by the browser
+        const mixedAudio = new Audio();
+        mixedAudio.srcObject = mixedStream;
+        mixedAudio.play();
+
+        // Create MediaRecorder instance for recording
         mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'audio/webm' });
 
         mediaRecorder.ondataavailable = (event) => {
@@ -231,3 +236,4 @@
   </script>
 </body>
 </html>
+
