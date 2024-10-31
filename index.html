@@ -32,79 +32,119 @@
     <br><br>
   </div>
 
+  <div id="captions" style="border: 1px solid black; padding: 10px; width: 300px; height: 100px; overflow-y: auto;">
+  <p id="transcript"></p>
+  </div>
+
   <script>
-    let userAgent;
-    let currentSession;
+  let userAgent;
+  let currentSession;
+  let recognition;
 
-    function registerSipClient() {
-      const sipUri = document.getElementById('sipUri').value;
-      const sipPassword = document.getElementById('sipPassword').value;
-      const sipServer = document.getElementById('sipServer').value;
+  function startSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window)) {
+      alert('Your browser does not support the Web Speech API');
+      return;
+    }
 
-      if (!sipUri || !sipPassword || !sipServer) {
-        alert('Please enter all the required details.');
-        return;
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = function(event) {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
       }
+      document.getElementById('transcript').innerText = transcript;
+    };
 
-      try {
-        const socket = new JsSIP.WebSocketInterface(sipServer);
-        const configuration = {
-          sockets: [socket],
-          uri: sipUri,
-          password: sipPassword
-        };
+    recognition.onerror = function(event) {
+      console.error('Speech recognition error', event);
+    };
 
-        userAgent = new JsSIP.UA(configuration);
-        userAgent.start();
+    recognition.start();
+  }
 
-        userAgent.on('registered', () => {
-          alert('SIP client registered successfully!');
-          document.getElementById('call-controls').style.display = 'block';
-        });
+  function registerSipClient() {
+    const sipUri = document.getElementById('sipUri').value;
+    const sipPassword = document.getElementById('sipPassword').value;
+    const sipServer = document.getElementById('sipServer').value;
 
-        userAgent.on('registrationFailed', (e) => {
-          alert('Registration failed: ' + e.cause);
-        });
+    if (!sipUri || !sipPassword || !sipServer) {
+      alert('Please enter all the required details.');
+      return;
+    }
 
-        userAgent.on('newRTCSession', (data) => {
-          currentSession = data.session;
+    try {
+      const socket = new JsSIP.WebSocketInterface(sipServer);
+      const configuration = {
+        sockets: [socket],
+        uri: sipUri,
+        password: sipPassword
+      };
 
-          if (currentSession.direction === 'incoming') {
-            currentSession.answer({ mediaConstraints: { audio: true, video: false } });
+      userAgent = new JsSIP.UA(configuration);
+      userAgent.start();
+
+      userAgent.on('registered', () => {
+        alert('SIP client registered successfully!');
+        document.getElementById('call-controls').style.display = 'block';
+      });
+
+      userAgent.on('newRTCSession', (data) => {
+        currentSession = data.session;
+
+        if (currentSession.direction === 'incoming') {
+          currentSession.answer({ mediaConstraints: { audio: true, video: false } });
+        }
+
+        startSpeechRecognition(); // Start transcribing when the call starts
+
+        currentSession.on('ended', () => {
+          currentSession = null;
+          if (recognition) {
+            recognition.stop(); // Stop transcription when the call ends
           }
-
-          currentSession.on('ended', () => {
-            currentSession = null;
-          });
         });
-      } catch (error) {
-        console.error('Error during SIP client registration:', error);
-        alert('Failed to initialize SIP client. Please check the WebSocket URL and try again.');
-      }
-    }
-
-    function makeCall() {
-      const callNumber = document.getElementById('callNumber').value;
-
-      if (!callNumber) {
-        alert('Please enter the number to call.');
-        return;
-      }
-
-      currentSession = userAgent.call('sip:' + callNumber + '@' + userAgent.configuration.uri.split('@')[1], {
-        mediaConstraints: { audio: true, video: false }
       });
 
-      currentSession.on('ended', () => {
-        currentSession = null;
-      });
+    } catch (error) {
+      console.error('Error during SIP client registration:', error);
+      alert('Failed to initialize SIP client. Please check the WebSocket URL and try again.');
+    }
+  }
+
+  function makeCall() {
+    const callNumber = document.getElementById('callNumber').value;
+
+    if (!callNumber) {
+      alert('Please enter the number to call.');
+      return;
     }
 
-    function hangupCall() {
-      if (currentSession) {
-        currentSession.terminate();
+    currentSession = userAgent.call('sip:' + callNumber + '@' + userAgent.configuration.uri.split('@')[1], {
+      mediaConstraints: { audio: true, video: false }
+    });
+
+    currentSession.on('ended', () => {
+      currentSession = null;
+      if (recognition) {
+        recognition.stop(); // Stop transcription when the call ends
+      }
+    });
+  }
+
+  function hangupCall() {
+    if (currentSession) {
+      currentSession.terminate();
+      if (recognition) {
+        recognition.stop(); // Stop transcription when the call ends
       }
     }
-  </script>
+  }
+</script>
+
 </body>
 </html>
