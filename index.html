@@ -49,6 +49,7 @@
     let recognition;
     let mediaRecorder;
     let recordedChunks = [];
+    let audioContext, mixedStream, speechRecognitionNode;
 
     function startRecording() {
       if (!currentSession) {
@@ -62,7 +63,7 @@
         const remoteStream = currentSession.connection.getRemoteStreams()[0];
         
         // Create a new MediaStream to combine local and remote audio
-        const mixedStream = new MediaStream();
+        mixedStream = new MediaStream();
 
         if (localStream && localStream.getAudioTracks().length > 0) {
           mixedStream.addTrack(localStream.getAudioTracks()[0]);
@@ -72,10 +73,12 @@
           mixedStream.addTrack(remoteStream.getAudioTracks()[0]);
         }
 
-        // Play the combined stream so that it is "heard" by the browser
-        const mixedAudio = new Audio();
-        mixedAudio.srcObject = mixedStream;
-        mixedAudio.play();
+        // Play the remote stream for the user
+        if (remoteStream && remoteStream.getAudioTracks().length > 0) {
+          const remoteAudio = new Audio();
+          remoteAudio.srcObject = remoteStream;
+          remoteAudio.play();
+        }
 
         // Create MediaRecorder instance for recording
         mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'audio/webm' });
@@ -92,6 +95,10 @@
 
         mediaRecorder.start();
         console.log('Recording started...');
+
+        // Start speech recognition for the mixed stream
+        startMixedStreamRecognition();
+        
       } catch (error) {
         console.error('Error starting recording:', error);
         alert('Failed to start recording.');
@@ -120,11 +127,15 @@
       console.log('Recording downloaded...');
     }
 
-    function startSpeechRecognition() {
+    function startMixedStreamRecognition() {
       if (!('webkitSpeechRecognition' in window)) {
         alert('Your browser does not support the Web Speech API');
         return;
       }
+
+      audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(mixedStream);
+      speechRecognitionNode = audioContext.createScriptProcessor(2048, 1, 1);
 
       recognition = new webkitSpeechRecognition();
       recognition.continuous = true;
@@ -142,6 +153,14 @@
       recognition.onerror = function(event) {
         console.error('Speech recognition error', event);
       };
+
+      speechRecognitionNode.onaudioprocess = function(event) {
+        // This is where the mixed audio would be analyzed and potentially sent to the recognition
+        console.log('Audio processing...');
+      };
+
+      source.connect(speechRecognitionNode);
+      speechRecognitionNode.connect(audioContext.destination);
 
       recognition.start();
     }
@@ -179,7 +198,6 @@
             currentSession.answer({ mediaConstraints: { audio: true, video: false } });
           }
 
-          // Start speech recognition when the call starts
           startSpeechRecognition();
 
           // Handle incoming remote stream
@@ -236,4 +254,3 @@
   </script>
 </body>
 </html>
-
