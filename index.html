@@ -169,6 +169,7 @@
           sockets: [socket],
           uri: sipUri,
           password: sipPassword,
+          register_expires: 3600, // Request a longer expiry time (e.g., 1 hour)
           session_timers: false // Disable session timers to prevent automatic re-registration
         };
 
@@ -178,6 +179,11 @@
         userAgent.on('registered', () => {
           alert('SIP client registered successfully!');
           document.getElementById('call-controls').style.display = 'block';
+        });
+
+        userAgent.on('registrationFailed', (data) => {
+          console.error('Registration failed:', data.cause);
+          alert('Registration failed: ' + data.cause);
         });
 
         userAgent.on('newRTCSession', (data) => {
