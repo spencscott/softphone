@@ -32,6 +32,10 @@
     <br><br>
   </div>
 
+  <div id="record-controls" style="display:none;">
+  <button onclick="downloadRecording()">Download Recording</button>
+</div>
+
   <div id="captions" style="border: 1px solid black; padding: 10px; width: 300px; height: 100px; overflow-y: auto;">
   <p id="transcript"></p>
   </div>
@@ -40,6 +44,74 @@
   let userAgent;
   let currentSession;
   let recognition;
+  let mediaRecorder;
+  let recordedChunks = [];
+
+function startRecording() {
+  if (!currentSession) {
+    alert('No active call to record.');
+    return;
+  }
+
+  try {
+    // Capture local and remote audio tracks
+    const localStream = currentSession.connection.getLocalStreams()[0];
+    const remoteStream = currentSession.connection.getRemoteStreams()[0];
+    
+    // Create a new MediaStream to combine local and remote audio
+    const mixedStream = new MediaStream();
+
+    if (localStream && localStream.getAudioTracks().length > 0) {
+      mixedStream.addTrack(localStream.getAudioTracks()[0]);
+    }
+
+    if (remoteStream && remoteStream.getAudioTracks().length > 0) {
+      mixedStream.addTrack(remoteStream.getAudioTracks()[0]);
+    }
+
+    // Create MediaRecorder instance
+    mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'audio/webm' });
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      document.getElementById('record-controls').style.display = 'block';
+    };
+
+    mediaRecorder.start();
+    console.log('Recording started...');
+  } catch (error) {
+    console.error('Error starting recording:', error);
+    alert('Failed to start recording.');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    console.log('Recording stopped...');
+  } else {
+    alert('Recording is not active.');
+  }
+}
+
+function downloadRecording() {
+  const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = 'call_recording.wav'; // You can also use .webm format for better browser compatibility
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  console.log('Recording downloaded...');
+}
+
 
   function startSpeechRecognition() {
     if (!('webkitSpeechRecognition' in window)) {
