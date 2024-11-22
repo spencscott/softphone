@@ -3,45 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple WebRTC Softphone</title>
+  <title>WebRTC Softphone</title>
   <link rel="manifest" href="manifest.json">
   <script src="jssip-3.10.0.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --background-color: #f4f4f4;
+      --text-color: #333;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: var(--background-color);
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+
+    .container {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin-top: 20px;
+    }
+
+    h2 {
+      color: var(--primary-color);
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      background-color: var(--secondary-color);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    button:disabled {
+      background-color: #bdc3c7;
+      cursor: not-allowed;
+    }
+
+    #captions {
+      background-color: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      padding: 15px;
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    #record-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 15px;
+      }
+      
+      .button-group {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h2>Simple WebRTC Softphone</h2>
+  <div class="container">
+    <h2>WebRTC Softphone</h2>
 
-  <div>
-    <label for="sipUri">SIP URI (e.g., sip:username@domain): </label>
-    <input type="text" id="sipUri" placeholder="sip:1010wp@loupdb.com" value="sip:1010wp@loupdb.com">
-    <br><br>
-    <label for="sipPassword">Password: </label>
-    <input type="password" id="sipPassword" placeholder="Password" value="8Z8Cbln9">
-    <br><br>
-    <label for="sipServer">WebSocket Server (Outbound Proxy, e.g., wss://your-sip-server.com:8089/ws): </label>
-    <input type="text" id="sipServer" placeholder="wss://alpha.netsapiens.com:8001/ws" value="wss://alpha.netsapiens.com:9002">
-    <br><br>
-    <button onclick="registerSipClient()">Register</button>
-    <br><br>
-  </div>
+    <div id="registration-section">
+      <div class="input-group">
+        <label for="sipUri">SIP URI</label>
+        <input type="text" id="sipUri" placeholder="sip:username@domain" value="sip:1010wp@loupdb.com">
+      </div>
 
-  <div id="call-controls" style="display:none;">
-    <label for="callNumber">Call Number: </label>
-    <input type="text" id="callNumber" placeholder="Number to call">
-    <br><br>
-    <button onclick="makeCall()">Call</button>
-    <button onclick="hangupCall()">Hang Up</button>
-    <br><br>
-  </div>
+      <div class="input-group">
+        <label for="sipPassword">Password</label>
+        <input type="password" id="sipPassword" placeholder="Password" value="8Z8Cbln9">
+      </div>
 
-  <div id="record-controls" style="display:none;">
-    <button onclick="downloadRecording()">Download Recording</button>
-  </div>
+      <div class="input-group">
+        <label for="sipServer">WebSocket Server</label>
+        <input type="text" id="sipServer" placeholder="wss://your-sip-server.com:8089/ws" value="wss://alpha.netsapiens.com:9002">
+      </div>
 
-  <button onclick="startRecording()">Start Recording</button>
-  <button onclick="stopRecording()">Stop Recording</button>
+      <div class="button-group">
+        <button onclick="registerSipClient()">Register</button>
+      </div>
+    </div>
 
-  <div id="captions" style="border: 1px solid black; padding: 10px; width: 300px; height: 100px; overflow-y: auto;">
-    <p id="transcript"></p>
+    <div id="call-controls" style="display:none;">
+      <div class="input-group">
+        <label for="callNumber">Call Number</label>
+        <input type="text" id="callNumber" placeholder="Number to call">
+      </div>
+
+      <div class="button-group">
+        <button onclick="makeCall()">Call</button>
+        <button onclick="hangupCall()">Hang Up</button>
+      </div>
+    </div>
+
+    <div id="record-controls" style="display:none;">
+      <button onclick="startRecording()">Start Recording</button>
+      <button onclick="stopRecording()">Stop Recording</button>
+      <button onclick="downloadRecording()">Download Recording</button>
+    </div>
+
+    <div id="captions">
+      <p id="transcript">Transcription will appear here...</p>
+    </div>
   </div>
 
   <script>
@@ -58,11 +171,9 @@
       }
 
       try {
-        // Capture local and remote audio tracks
         const localStream = currentSession.connection.getLocalStreams()[0];
         const remoteStream = currentSession.connection.getRemoteStreams()[0];
         
-        // Create a new MediaStream to combine local and remote audio
         const mixedStream = new MediaStream();
 
         if (localStream && localStream.getAudioTracks().length > 0) {
@@ -73,7 +184,6 @@
           mixedStream.addTrack(remoteStream.getAudioTracks()[0]);
         }
 
-        // Create MediaRecorder instance
         mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'audio/webm' });
 
         mediaRecorder.ondataavailable = (event) => {
@@ -109,7 +219,7 @@
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = 'call_recording.wav'; // You can also use .webm format for better browser compatibility
+      a.download = 'call_recording.wav';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -175,10 +285,8 @@
             currentSession.answer({ mediaConstraints: { audio: true, video: false } });
           }
 
-          // Start speech recognition when the call starts
           startSpeechRecognition();
 
-          // Handle incoming remote stream
           currentSession.connection.ontrack = (event) => {
             console.log("Received remote track:", event.streams[0]);
             if (event.streams && event.streams[0]) {
@@ -191,7 +299,7 @@
           currentSession.on('ended', () => {
             currentSession = null;
             if (recognition) {
-              recognition.stop(); // Stop transcription when the call ends
+              recognition.stop();
             }
           });
         });
@@ -216,7 +324,7 @@
       currentSession.on('ended', () => {
         currentSession = null;
         if (recognition) {
-          recognition.stop(); // Stop transcription when the call ends
+          recognition.stop();
         }
       });
     }
@@ -225,23 +333,22 @@
       if (currentSession) {
         currentSession.terminate();
         if (recognition) {
-          recognition.stop(); // Stop transcription when the call ends
+          recognition.stop();
         }
       }
     }
   </script>
 
   <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(function(registration) {
-        console.log('Service Worker registered with scope:', registration.scope);
-      })
-      .catch(function(error) {
-        console.error('Service Worker registration failed:', error);
-      });
-  }
-</script>
-  
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(function(registration) {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(function(error) {
+          console.error('Service Worker registration failed:', error);
+        });
+    }
+  </script>
 </body>
 </html>
