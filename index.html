@@ -56,6 +56,11 @@
       box-sizing: border-box;
     }
 
+    input:disabled {
+      background-color: #f0f0f0;
+      color: #666;
+    }
+
     .button-group {
       display: flex;
       gap: 10px;
@@ -158,7 +163,76 @@
   </div>
 
   <script>
-    // [Previous JavaScript remains the same as in the last full example]
+    let userAgent;
+    let currentSession;
+    let recognition;
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    function registerSipClient() {
+      const sipUri = document.getElementById('sipUri').value;
+      const sipPassword = document.getElementById('sipPassword').value;
+      const sipServer = document.getElementById('sipServer').value;
+
+      if (!sipUri || !sipPassword || !sipServer) {
+        alert('Please enter all the required details.');
+        return;
+      }
+
+      try {
+        const socket = new JsSIP.WebSocketInterface(sipServer);
+        const configuration = {
+          sockets: [socket],
+          uri: sipUri,
+          password: sipPassword
+        };
+
+        userAgent = new JsSIP.UA(configuration);
+        userAgent.start();
+
+        userAgent.on('registered', () => {
+          alert('SIP client registered successfully!');
+          
+          // Disable registration fields
+          document.getElementById('sipUri').setAttribute('disabled', 'true');
+          document.getElementById('sipPassword').setAttribute('disabled', 'true');
+          document.getElementById('sipServer').setAttribute('disabled', 'true');
+          
+          document.getElementById('call-controls').style.display = 'block';
+        });
+
+        userAgent.on('newRTCSession', (data) => {
+          currentSession = data.session;
+
+          if (currentSession.direction === 'incoming') {
+            currentSession.answer({ mediaConstraints: { audio: true, video: false } });
+          }
+
+          startSpeechRecognition();
+
+          currentSession.connection.ontrack = (event) => {
+            console.log("Received remote track:", event.streams[0]);
+            if (event.streams && event.streams[0]) {
+              const remoteAudio = new Audio();
+              remoteAudio.srcObject = event.streams[0];
+              remoteAudio.play();
+            }
+          };
+
+          currentSession.on('ended', () => {
+            currentSession = null;
+            if (recognition) {
+              recognition.stop();
+            }
+          });
+        });
+      } catch (error) {
+        console.error('Error during SIP client registration:', error);
+        alert('Failed to initialize SIP client. Please check the WebSocket URL and try again.');
+      }
+    }
+
+    // [Rest of the previous JavaScript remains the same]
   </script>
 </body>
 </html>
